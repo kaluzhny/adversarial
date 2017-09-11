@@ -126,6 +126,27 @@ class Defense(Submission):
     subprocess.call(cmd)
 
 
+def read_submission(submission_path, use_gpu):
+    if not os.path.isdir(submission_path):
+        raise IOError("Path not found '{}'".format(submission_path))
+    if not os.path.exists(os.path.join(submission_path, 'metadata.json')):
+        raise IOError("Metadata not found in '{}' folder".format(submission_path))
+    with open(os.path.join(submission_path, 'metadata.json')) as f:
+        metadata = json.load(f)
+    if use_gpu and ('container_gpu' in metadata):
+        container = metadata['container_gpu']
+    else:
+        container = metadata['container']
+    entry_point = metadata['entry_point']
+    submission_type = metadata['type']
+    if submission_type == 'attack' or submission_type == 'targeted_attack':
+        return Attack(submission_path, container, entry_point, use_gpu)
+    elif submission_type == 'defense':
+        return Defense(submission_path, container, entry_point, use_gpu)
+    else:
+        raise ValueError('Invalid type of submission: %s', submission_type)
+
+
 def read_submissions_from_directory(dirname, use_gpu):
   """Scans directory and read all submissions.
 
@@ -142,24 +163,7 @@ def read_submissions_from_directory(dirname, use_gpu):
   for sub_dir in os.listdir(dirname):
     submission_path = os.path.join(dirname, sub_dir)
     try:
-      if not os.path.isdir(submission_path):
-        continue
-      if not os.path.exists(os.path.join(submission_path, 'metadata.json')):
-        continue
-      with open(os.path.join(submission_path, 'metadata.json')) as f:
-        metadata = json.load(f)
-      if use_gpu and ('container_gpu' in metadata):
-        container = metadata['container_gpu']
-      else:
-        container = metadata['container']
-      entry_point = metadata['entry_point']
-      submission_type = metadata['type']
-      if submission_type == 'attack' or submission_type == 'targeted_attack':
-        submission = Attack(submission_path, container, entry_point, use_gpu)
-      elif submission_type == 'defense':
-        submission = Defense(submission_path, container, entry_point, use_gpu)
-      else:
-        raise ValueError('Invalid type of submission: %s', submission_type)
+      submission = read_submission(submission_path, use_gpu)
       result.append(submission)
     except (IOError, KeyError, ValueError):
       print('Failed to read submission from directory ', submission_path)
@@ -494,9 +498,9 @@ def main():
       if isinstance(a, Attack)
   ]
   targeted_attacks = [
-      a for a in read_submissions_from_directory(args.targeted_attacks_dir,
-                                                 args.use_gpu)
-      if isinstance(a, Attack)
+      # a for a in read_submissions_from_directory(args.targeted_attacks_dir,
+      #                                            args.use_gpu)
+      # if isinstance(a, Attack)
   ]
   defenses = [
       d for d in read_submissions_from_directory(args.defenses_dir,
