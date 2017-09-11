@@ -134,7 +134,10 @@ def main(_):
     fgsm = FastGradientMethod(model)
 
     iterations = 2
-    x_adv = fgsm.generate(x_input, eps=eps / iterations, clip_min=-1., clip_max=1.)
+    eps = eps / iterations
+    x_adv = fgsm.generate(x_input, eps=eps, clip_min=-1., clip_max=1.)
+    x_noise = x_adv + eps * tf.sign(tf.random_normal(batch_shape))
+    x_output = tf.clip_by_value(x_noise, -1., 1.0)
 
     # Run computation
     saver = tf.train.Saver(slim.get_model_variables())
@@ -146,7 +149,7 @@ def main(_):
     with tf.train.MonitoredSession(session_creator=session_creator) as sess:
       for filenames, images in load_images(FLAGS.input_dir, batch_shape):
         for _ in xrange(iterations):
-          images = sess.run(x_adv, feed_dict={x_input: images})
+          images = sess.run(x_output, feed_dict={x_input: images})
         save_images(images, filenames, FLAGS.output_dir)
 
 
